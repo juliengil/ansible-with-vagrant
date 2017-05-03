@@ -1,0 +1,13 @@
+---
+
+- hosts: group1
+  become: yes
+  become_user: root
+  gather_facts: True
+
+  roles:
+    - {role: docker}
+    - {role: start-service}
+
+  vars_files:
+    - vars/main.yml

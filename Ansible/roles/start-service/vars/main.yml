@@ -1,0 +1,8 @@
+---
+src_directory: "../Docker"
+web_src_directory: "{{ src_directory }}/site"
+db_src_directory: "{{ src_directory }}/database"
+
+dest_directory: "/home/vagrant/docker"
+
+dockerfile_path: "{{ dest_directory }}/site"

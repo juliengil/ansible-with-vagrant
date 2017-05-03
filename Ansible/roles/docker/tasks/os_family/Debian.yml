@@ -1,0 +1,73 @@
+---
+- name: Install dependencies
+  apt:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - python
+    - curl
+    - apt-transport-https
+    - ca-certificates
+    - apparmor
+
+- name: Install pip
+  shell: curl -sSL https://bootstrap.pypa.io/get-pip.py | python
+
+- name: Get docker-compose last version
+  shell: curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4
+  register: dcv
+
+- name: Install docker-compose
+  shell: curl -L "https://github.com/docker/compose/releases/download/{{ dcv.stdout }}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+
+# for ansible modules
+- name: install certain python modules for docker
+  pip:
+    name: "{{ item.name }}"
+    version: "{{ item.version }}"
+    state: present
+  with_items:
+    - { name: docker-py, version: 1.8.0 }
+    - { name: docker-compose, version: 1.9.0 }
+
+- name: Adding apt-key
+  shell: curl -sSL https://get.docker.com/gpg | apt-key add -
+
+- name: Docker package
+  shell: curl -sSL https://get.docker.com/ | sh
+
+- name: Add runner to docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  with_items:
+    - "{{ admin_user }}"
+
+- name: Create Docker config dir
+  file:
+    path: "{{ docker_path }}/config"
+    state: directory
+
+- name: Start docker
+  service:
+    name: docker
+    state: stopped
+
+- name: Remove old config directory
+  file:
+    path: /var/lib/docker
+    state: absent
+
+- name: Link to new config directory
+  file:
+    src: "{{ docker_path }}/config"
+    dest: /var/lib/docker
+    state: link
+    force: yes
+
+- name: Edit Docker config file with new config directory
+  replace:
+    dest: /etc/default/docker
+    regexp: '#DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"'
+    replace: 'DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4 -g {{ docker_path }}/config"'

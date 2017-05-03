@@ -1,0 +1,50 @@
+---
+# tasks to launch the mini docker/test website
+
+- name: Ensure the path exists
+  file:
+    path: "{{ dest_directory }}"
+    state: directory
+
+- name: Copy local content from client to server
+  copy:
+    src: "{{ item }}"
+    dest: "{{ dest_directory }}"
+  with_items:
+    - "{{ web_src_directory }}"
+    - "{{ db_src_directory }}"
+
+- name: Install docker-py
+  pip:
+    name: docker-py
+
+- name: Build docker image
+  docker_image:
+     pull: no
+     state: present
+     path: "{{ dockerfile_path }}"
+     name: "my_web_server"
+
+- name: Docker compose service
+  docker_service:
+    project_name: "myservice"
+    definition:
+      version: '2'
+      services:
+        db:
+          image: "mongo:3.4"
+          expose: 
+            - "27017"
+          volumes: 
+            - "{{ dest_directory }}/database/db:/data/db"
+        web:
+          build: "{{ dockerfile_path }}"
+          command: "sh /home/www/waitfordb.sh"
+          links : 
+            - "db:db"
+          volumes: 
+            - "{{ dest_directory }}/site/www:/home/www"
+          ports:
+            - "8080:8080"
+          depends_on:
+            - db

@@ -1,0 +1,8 @@
+---
+- name: Install docker and dependencies
+  include: "os_family/Debian.yml"
+  tags: docker
+
+- name: Configure docker
+  include: "configuration.yml"
+  tags: docker

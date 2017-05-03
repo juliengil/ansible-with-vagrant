@@ -1,0 +1,31 @@
+version: "3.1"
+services:
+  web:
+    build: ./site/
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./site/www:/home/www
+    depends_on:
+      - db
+    command: >
+      /bin/bash -c "
+          while ! curl db:27017;
+          do
+            echo sleeping;
+            sleep 1;
+          done;
+          echo Connected!;
+          node /home/www/serveur.js
+        "
+    healthcheck:
+      test: curl db:27017 || echo 'unable to access the database container'
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+  db:
+    image: mongo:3.4
+    expose: 
+      - "27017"
+    volumes:
+      - ./database/db:/data/db
